@@ -9,18 +9,32 @@ type Mode = 'all' | 'five' | 'red' | null;
 export const App: React.FC = () => {
   const [goods, setGoods] = useState<Good[]>([]);
   const [mode, setMode] = useState<Mode>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!mode) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    let fetcher: (() => Promise<Good[]>) | null = null;
+
     if (mode === 'all') {
-      getAll().then(setGoods);
+      fetcher = getAll;
+    } else if (mode === 'five') {
+      fetcher = get5First;
+    } else if (mode === 'red') {
+      fetcher = getRedGoods;
     }
 
-    if (mode === 'five') {
-      get5First().then(setGoods);
-    }
-
-    if (mode === 'red') {
-      getRedGoods().then(setGoods);
+    if (fetcher) {
+      fetcher()
+        .then(setGoods)
+        .catch(err => setError(err.message || 'Failed to load goods'))
+        .finally(() => setLoading(false));
     }
   }, [mode]);
 
@@ -43,6 +57,9 @@ export const App: React.FC = () => {
       <button type="button" data-cy="red-button" onClick={() => setMode('red')}>
         Load red goods
       </button>
+
+      {loading && <p>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
 
       <GoodsList goods={goods} />
     </div>
